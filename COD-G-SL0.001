@@ -1,0 +1,332 @@
+import tkinter as tk
+from tkinter import ttk
+import time
+from tkinter.messagebox import *
+import datetime
+import os
+import sys
+import subprocess
+import pdfrw
+pdfrw.__version__
+
+
+        
+class Window(tk.Toplevel):
+    global Job
+    global listbox
+    global First_SN
+    global ID
+    global Stock
+    global dic
+    global listSN
+
+    def fillPdf(self, counter, outputDic, outputPdf, pdfTemplate):
+        templatePdf = pdfrw.PdfReader(pdfTemplate)
+        outputPdfPath = f"{self.PartType}/{str(Job.get().upper())}/{outputPdf}.pdf"
+
+        annotKey = '/Annots'
+        annotFieldKey = '/T'
+        AnnotValKey = '/V'
+        AnnotRectKey = '/Rect'
+        SubtypeKey = '/Subtype'
+        WidgetSubtypeKey = '/Widget'
+
+        for page in templatePdf.pages:
+            annotations = page[annotKey]
+            for annotation in annotations:
+                if annotation[SubtypeKey] == WidgetSubtypeKey:
+                    if annotation[annotFieldKey]:
+                        field_name = str(annotation[annotFieldKey][1:-1])
+                        if field_name in outputDic.keys():
+                            if str(annotation[annotFieldKey][1:-1]) == 'EUTPartNumber':
+                                pass
+                            else:
+                                key = annotation[annotFieldKey][1:-1]
+                                if key in outputDic.keys():
+                                    annotation.update(pdfrw.PdfDict(V='{}'.format(outputDic[key])))
+                                    annotation.update(pdfrw.PdfDict(AP=''))
+        templatePdf.Root.AcroForm.update(pdfrw.PdfDict(NeedAppearances=pdfrw.PdfObject('true')))
+        pdfrw.PdfWriter().write(outputPdfPath, templatePdf)
+
+    def PDFWRUSP(self, counter):
+        c = 0
+        pdfTemplate = "827USP001-R02/827USP001-R02-Template.pdf"
+        templatePdf = pdfrw.PdfReader(pdfTemplate)
+        annotKey = '/Annots'
+        annotFieldKey = '/T'
+        AnnotValKey = '/V'
+        AnnotRectKey = '/Rect'
+        SubtypeKey = '/Subtype'
+        WidgetSubtypeKey = '/Widget'
+        for page in templatePdf.pages:
+            annotations = page[annotKey]
+            for annotation in annotations:
+                if annotation[SubtypeKey] == WidgetSubtypeKey:
+                    if annotation[annotFieldKey]:
+                        if str(annotation[annotFieldKey][1:-1]) == 'EUTPartNumber':
+                            pass
+                        else:
+                            key = annotation[annotFieldKey][1:-1]
+                            c += 1
+        outputList1 = [0] * c
+        p = 0
+        for page in templatePdf.pages:
+            annotations = page[annotKey]
+            for annotation in annotations:
+                if annotation[SubtypeKey] == WidgetSubtypeKey:
+                    if annotation[annotFieldKey]:
+                        if str(annotation[annotFieldKey][1:-1]) == 'EUTPartNumber':
+                            pass
+                        else:
+                            key = annotation[annotFieldKey][1:-1]
+                            outputList1[p] = key
+                            p += 1
+        date = datetime.date.today()
+        outputList2 = [f"{self.rightSerial}{self.listSN[counter]}", ID.get(), date.strftime("%m/%d/%Y")]
+        outputDic = dict(zip(outputList1, outputList2))
+        self.fillPdf(counter, outputDic, outputList2[0], pdfTemplate)
+
+    def PDFWRRUU(self, counter):
+        c = 0
+        if self.PartType == '827RUU311-102':
+            pdfTemplate = "827RUU311-102/827RUU311-102-Template.pdf"
+        elif self.PartType == '827RUU311-101':
+            pdfTemplate = "827RUU311-101/827RUU311-101-Template.pdf"
+        templatePdf = pdfrw.PdfReader(pdfTemplate)
+        annotKey = '/Annots'
+        annotFieldKey = '/T'
+        AnnotValKey = '/V'
+        AnnotRectKey = '/Rect'
+        SubtypeKey = '/Subtype'
+        WidgetSubtypeKey = '/Widget'
+        for page in templatePdf.pages:
+            annotations = page[annotKey]
+            for annotation in annotations:
+                if annotation[SubtypeKey] == WidgetSubtypeKey:
+                    if annotation[annotFieldKey]:
+                        if str(annotation[annotFieldKey][1:-1]) == 'PartNumberField' or str(
+                                annotation[annotFieldKey][1:-1]) == 'UUTRevField':
+                            pass
+                        else:
+                            key = annotation[annotFieldKey][1:-1]
+                            c += 1
+        outputList1 = [0] * c
+        p = 0
+        for page in templatePdf.pages:
+            annotations = page[annotKey]
+            for annotation in annotations:
+                if annotation[SubtypeKey] == WidgetSubtypeKey:
+                    if annotation[annotFieldKey]:
+                        if str(annotation[annotFieldKey][1:-1]) == 'PartNumberField' or str(
+                                annotation[annotFieldKey][1:-1]) == 'UUTRevField':
+                            pass
+                        else:
+                            key = annotation[annotFieldKey][1:-1]
+                            outputList1[p] = key
+                            p += 1
+        date = datetime.date.today()
+        outputList2 = [f"{self.rightSerial}{self.listSN[counter]}", ID.get(), date.strftime("%m/%d/%Y")]
+        outputDic = dict(zip(outputList1, outputList2))
+        self.fillPdf(counter, outputDic, outputList2[0], pdfTemplate)
+
+    def open_created_folder(self, folder_path):
+        if os.path.exists(folder_path):
+            try:
+                subprocess.Popen(['explorer', folder_path])  # Opens the folder with the default file explorer (Windows)
+            except Exception as e:
+                tk.messagebox.showwarning("Folder error", f"Error opening folder: {e}")
+        else:
+            tk.messagebox.showwarning("Folder error", f"Folder does not exist: {folder_path}")
+                
+    def update_progress(self, value, total):
+        percentage = (value / total) * 100
+        self.progress_var.set(percentage)
+        self.update_idletasks()
+
+    def generate_clicked(self):
+        counter = 0
+        total = sum(value.get() != 0 for value in self.dic.values())
+        
+        for key, value in self.dic.items():
+            if value.get() != 0:
+                if self.PartType != '827USP001-R02':
+                    self.PDFWRRUU(counter)
+                    counter += 1
+                else:
+                    self.PDFWRUSP(counter)
+                    counter += 1
+                self.update_progress(counter, total)
+            else:
+                counter += 1
+                pass
+        self.progress_var.set(100)  # Ensure the progress bar reaches 100% when done
+        tk.messagebox.showinfo("Task completed", "Datasheet generated successfully")
+        created_folder_path = os.path.join(self.PartType, str(Job.get().upper()))
+        self.open_created_folder(created_folder_path)
+
+    
+    def createFolder(self, location, folderName):
+        folderPath = os.path.join(location, folderName)
+        try:
+            os.mkdir(folderPath)
+            return folderPath
+        except OSError as e:
+            return str(e)
+
+    def checkboxes(self):
+        c = 0
+        r = 1
+        r1 = 1
+        for key in self.dic:
+            self.dic[key] = tk.IntVar()
+            self.dic[key].set(1)
+            aCheckButton = tk.Checkbutton(self,
+                                          text=f"{self.rightSerial}{str(key)}",
+                                          variable=self.dic[key])
+            if r < 15:
+                aCheckButton.grid(row=r, column=c, sticky=tk.W)
+                r += 1
+            else:
+                c = 1
+                aCheckButton.grid(row=r1, column=c, sticky=tk.W)
+                r1 += 1
+        return r
+    
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.geometry('450x450')
+        self.title('Serial Number Selection')
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=1)
+        #self.columnconfigure(2, weight=1)
+        self.iconbitmap("CODicon.ico")
+        self.label = tk.Label(self, text="Check the series that passed the test:")
+        self.label.grid(row=0, column=0, sticky=tk.W)
+        self.listSN = [0] * int(Stock.get())
+        stats = [0] * int(Stock.get())
+        leftSerial = First_SN.get()[6:]
+        intLeftSerial = int(leftSerial)
+        self.rightSerial = First_SN.get().upper()[:6]
+        self.dic = {}
+        
+
+        
+        for c in range(Stock.get()):
+            self.listSN[c] = str(intLeftSerial + c).zfill(len(leftSerial))
+            stats[c] = 1
+        self.dic = dict(zip(self.listSN, stats))
+        global PartType
+        self.checkboxes()
+        global window
+        for i in listbox.curselection():
+            self.PartType = listbox.get(i)
+        try:
+            print(self.PartType)
+        except:
+            tk.messagebox.showwarning("Missing Information", "Do not forget to select the part number.")
+            self.destroy()
+            sys.exit("This is the error")
+
+        self.labelBar = tk.Label(self, text="Progress:")
+        self.labelBar.grid(row= 27,  columnspan=3,sticky='s')
+        
+        self.progress_var = tk.DoubleVar()
+        self.progressbar = ttk.Progressbar(self, variable=self.progress_var)
+        self.progressbar.grid(row= 28,  columnspan=3,sticky='s')
+        
+        folderLocation = self.PartType
+        newFolderName = str(Job.get().upper())
+        self.createFolder(folderLocation, newFolderName)
+        self.normalButton = ttk.Button(self,
+                                       text='Generate',
+                                       command=self.generate_clicked)
+        self.normalButton.grid(row=0, column=1, sticky='e')
+
+class App(tk.Tk):
+    
+    def open_window(self):
+        #Filtering format data
+
+
+
+        if Job.get() == " " or First_SN.get() == " "  or len(ID.get()) == " "  or  int(Stock.get())==0:
+            tk.messagebox.showwarning("Missing Information", "Please, verify that all fields are filled.")
+        else:
+            try:
+               int(First_SN.get()[6:])+1
+            except:
+                tk.messagebox.showerror("Serial Number Format","Please, use the following format for Serial Number: '0000AA0000'.") 
+                sys.exit("This is the error")
+            if len(ID.get())==6:
+                try:
+                    int(ID.get())+1
+                except:
+                    tk.messagebox.showerror("Employee ID Error","The employee ID must be 6 digits number, ex. 301057.")
+                    sys.exit("This is the error")
+            else:
+                tk.messagebox.showerror("Employee ID Error","The employee ID must be 6 digits number, ex. 301057.")
+                sys.exit("This is the error")
+            try:
+                int(Stock.get())+1
+            except:
+                tk.messagebox.showerror("Stock Conflict","The Stock must be a number, ex. 25.")
+                sys.exit("This is the error")
+            if "MFRM" in str(Job.get()):
+                pass
+            else:
+                tk.messagebox.showerror("Job Conflict","Verify if the Job identifier is correct.")
+                sys.exit("This is the error")       
+            window = Window(self)
+            window.grab_set()
+
+
+    def GUI(self):
+        global PartType
+        Job_label = ttk.Label(self, text="Job:")
+        Job_label.pack(fill='x', expand=True)
+        Job_entry = ttk.Entry(self, textvariable=Job)
+        Job_entry.pack(padx=10, pady=10, fill='x', expand=True)
+        First_SN_label = ttk.Label(self, text="First Serial Number:")
+        First_SN_label.pack(fill='x', expand=True)
+        First_SN_entry = ttk.Entry(self, textvariable=First_SN)
+        First_SN_entry.pack(padx=10, pady=10, fill='x', expand=True)
+        ID_label = ttk.Label(self, text="ID:")
+        ID_label.pack(fill='x', expand=True)
+        ID_entry = ttk.Entry(self, textvariable=ID)
+        ID_entry.pack(padx=10, pady=10, fill='x', expand=True)
+        Stock_label = ttk.Label(self, text="Stock:")
+        Stock_label.pack(fill='x', expand=True)
+        Stock_entry = ttk.Entry(self, textvariable=Stock)
+        Stock_entry.pack(padx=10, pady=10, fill='x', expand=True)
+        global listbox
+        listbox_label = ttk.Label(self, text='Select the part number:')
+        listbox_label.pack(fill='x', expand=True)
+        listbox = tk.Listbox(self, listvariable=self.PartList, height=3)
+        listbox.pack(padx=10, pady=10, fill='x', expand=True)
+        secondWindow = ttk.Button(self,
+                                  text='Validate',
+                                  command=self.open_window)
+        secondWindow.pack(pady=10, expand=True)
+
+    def __init__(self):
+        super().__init__()
+        self.geometry('400x420')
+        self.title('Main Window')
+        self.resizable(False, False)
+        self.title('RUU DSG')
+        self.iconbitmap("CODicon.ico")
+        global Job
+        global First_SN
+        global ID
+        global Stock
+        Job = tk.StringVar()
+        First_SN = tk.StringVar()
+        ID = tk.StringVar()
+        Stock = tk.IntVar()
+        Parts = ('827RUU311-101', '827RUU311-102', '827USP001-R02')
+        self.PartList = tk.Variable(value=Parts)
+        self.GUI()
+
+if __name__ == "__main__":
+    app = App()
+    app.mainloop()
