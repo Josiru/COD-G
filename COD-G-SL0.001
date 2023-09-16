@@ -10,7 +10,8 @@ import pdfrw
 pdfrw.__version__
 
 
-        
+#ClassWindow, the second window tha pops-up after filling the required information on the first one it shows,
+all the serial numbers and let you select those that passed the test. 
 class Window(tk.Toplevel):
     global Job
     global listbox
@@ -24,6 +25,8 @@ class Window(tk.Toplevel):
         templatePdf = pdfrw.PdfReader(pdfTemplate)
         outputPdfPath = f"{self.PartType}/{str(Job.get().upper())}/{outputPdf}.pdf"
 
+Third and last iteration of the pdfrw this overwrite the fields of the documents with the information
+adquired on the first and second iteration.
         annotKey = '/Annots'
         annotFieldKey = '/T'
         AnnotValKey = '/V'
@@ -48,9 +51,10 @@ class Window(tk.Toplevel):
         templatePdf.Root.AcroForm.update(pdfrw.PdfDict(NeedAppearances=pdfrw.PdfObject('true')))
         pdfrw.PdfWriter().write(outputPdfPath, templatePdf)
 
-    def PDFWRUSP(self, counter):
-        c = 0
-        pdfTemplate = "827USP001-R02/827USP001-R02-Template.pdf"
+    def PDFWPartNumber3(self, counter):
+        c = 0 #Counter need it for the creation of the list in fuction of the number of editable fields that the form has.
+#First iteration of the pdfrw module, used to create a list with the editable fields on the form
+        pdfTemplate = "PartNumber3/PartNumber3-Template.pdf"
         templatePdf = pdfrw.PdfReader(pdfTemplate)
         annotKey = '/Annots'
         annotFieldKey = '/T'
@@ -63,19 +67,23 @@ class Window(tk.Toplevel):
             for annotation in annotations:
                 if annotation[SubtypeKey] == WidgetSubtypeKey:
                     if annotation[annotFieldKey]:
-                        if str(annotation[annotFieldKey][1:-1]) == 'EUTPartNumber':
+                        if str(annotation[annotFieldKey][1:-1]) == 'EUTPartNumber': #this conditional is used to omit those fields that are not to mean overwritten.
                             pass
                         else:
                             key = annotation[annotFieldKey][1:-1]
                             c += 1
-        outputList1 = [0] * c
+        outputList1 = [0] * c #List of zeros
         p = 0
+
+#Second iteration, takes the list of zeros build ontthe first iteretation and replaces them with the name of the fieldss that 
+the form template has.
         for page in templatePdf.pages:
             annotations = page[annotKey]
             for annotation in annotations:
                 if annotation[SubtypeKey] == WidgetSubtypeKey:
                     if annotation[annotFieldKey]:
-                        if str(annotation[annotFieldKey][1:-1]) == 'EUTPartNumber':
+#this conditional is used to omit those fields that are not to mean overwritten
+                        if str(annotation[annotFieldKey][1:-1]) == 'EUTPartNumber': #this conditional is used to omit those fields that are not to mean overwritten.
                             pass
                         else:
                             key = annotation[annotFieldKey][1:-1]
@@ -86,12 +94,12 @@ class Window(tk.Toplevel):
         outputDic = dict(zip(outputList1, outputList2))
         self.fillPdf(counter, outputDic, outputList2[0], pdfTemplate)
 
-    def PDFWRRUU(self, counter):
+    def PDFWPartNumber1-2(self, counter):
         c = 0
-        if self.PartType == '827RUU311-102':
-            pdfTemplate = "827RUU311-102/827RUU311-102-Template.pdf"
-        elif self.PartType == '827RUU311-101':
-            pdfTemplate = "827RUU311-101/827RUU311-101-Template.pdf"
+        if self.PartType == 'PartNumber2':
+            pdfTemplate = "PartNumber2/PartNumber2-Template.pdf"
+        elif self.PartType == 'PartNumber1':
+            pdfTemplate = "PartNumber1/PartNumber1-Template.pdf"
         templatePdf = pdfrw.PdfReader(pdfTemplate)
         annotKey = '/Annots'
         annotFieldKey = '/T'
@@ -104,6 +112,7 @@ class Window(tk.Toplevel):
             for annotation in annotations:
                 if annotation[SubtypeKey] == WidgetSubtypeKey:
                     if annotation[annotFieldKey]:
+#this conditional is used to omit those fields that are not to mean overwritten
                         if str(annotation[annotFieldKey][1:-1]) == 'PartNumberField' or str(
                                 annotation[annotFieldKey][1:-1]) == 'UUTRevField':
                             pass
@@ -116,6 +125,7 @@ class Window(tk.Toplevel):
             annotations = page[annotKey]
             for annotation in annotations:
                 if annotation[SubtypeKey] == WidgetSubtypeKey:
+#this conditional is used to omit those fields that are not to mean overwritten
                     if annotation[annotFieldKey]:
                         if str(annotation[annotFieldKey][1:-1]) == 'PartNumberField' or str(
                                 annotation[annotFieldKey][1:-1]) == 'UUTRevField':
@@ -129,6 +139,7 @@ class Window(tk.Toplevel):
         outputDic = dict(zip(outputList1, outputList2))
         self.fillPdf(counter, outputDic, outputList2[0], pdfTemplate)
 
+#After all the datasheets are created and placed on the folder with the name of the JOB, the scripts redirects automatically to the folder.
     def open_created_folder(self, folder_path):
         if os.path.exists(folder_path):
             try:
@@ -137,23 +148,25 @@ class Window(tk.Toplevel):
                 tk.messagebox.showwarning("Folder error", f"Error opening folder: {e}")
         else:
             tk.messagebox.showwarning("Folder error", f"Folder does not exist: {folder_path}")
-                
+
+#Updates progress bar             
     def update_progress(self, value, total):
         percentage = (value / total) * 100
         self.progress_var.set(percentage)
         self.update_idletasks()
 
+#The generate button function estar with the process of creation of the datasheets it redirects the info to one of the two preprocess functions.
     def generate_clicked(self):
         counter = 0
         total = sum(value.get() != 0 for value in self.dic.values())
         
         for key, value in self.dic.items():
             if value.get() != 0:
-                if self.PartType != '827USP001-R02':
-                    self.PDFWRRUU(counter)
+                if self.PartType != 'PartNumber3':
+                    self.PDFWPartNumber1-2(counter)
                     counter += 1
                 else:
-                    self.PDFWRUSP(counter)
+                    self.PDFWPartNumber3(counter)
                     counter += 1
                 self.update_progress(counter, total)
             else:
@@ -164,7 +177,7 @@ class Window(tk.Toplevel):
         created_folder_path = os.path.join(self.PartType, str(Job.get().upper()))
         self.open_created_folder(created_folder_path)
 
-    
+#Creates a folder with the name of the Job.
     def createFolder(self, location, folderName):
         folderPath = os.path.join(location, folderName)
         try:
@@ -173,6 +186,8 @@ class Window(tk.Toplevel):
         except OSError as e:
             return str(e)
 
+#This functions creates check boxes named after the serial numbers of the job, they can be checked and unchecked if the Serial Number
+passed or not the test.
     def checkboxes(self):
         c = 0
         r = 1
@@ -199,7 +214,7 @@ class Window(tk.Toplevel):
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
         #self.columnconfigure(2, weight=1)
-        self.iconbitmap("CODicon.ico")
+        #self.iconbitmap("CODicon.ico") #Change icon app optional
         self.label = tk.Label(self, text="Check the series that passed the test:")
         self.label.grid(row=0, column=0, sticky=tk.W)
         self.listSN = [0] * int(Stock.get())
@@ -242,13 +257,13 @@ class Window(tk.Toplevel):
                                        command=self.generate_clicked)
         self.normalButton.grid(row=0, column=1, sticky='e')
 
+
+#First window, it shows the requiered data to beging with the datasheet generator.
 class App(tk.Tk):
-    
+
+
     def open_window(self):
-        #Filtering format data
-
-
-
+        #Filtering format data, all these conditional keeps safe the entries of the first window.
         if Job.get() == " " or First_SN.get() == " "  or len(ID.get()) == " "  or  int(Stock.get())==0:
             tk.messagebox.showwarning("Missing Information", "Please, verify that all fields are filled.")
         else:
@@ -314,7 +329,7 @@ class App(tk.Tk):
         self.title('Main Window')
         self.resizable(False, False)
         self.title('RUU DSG')
-        self.iconbitmap("CODicon.ico")
+        #self.iconbitmap("CODicon.ico") #This is if the icon is changed
         global Job
         global First_SN
         global ID
@@ -323,7 +338,7 @@ class App(tk.Tk):
         First_SN = tk.StringVar()
         ID = tk.StringVar()
         Stock = tk.IntVar()
-        Parts = ('827RUU311-101', '827RUU311-102', '827USP001-R02')
+        Parts = ('PartNumber1', 'PartNumber2', 'PartNumber3')
         self.PartList = tk.Variable(value=Parts)
         self.GUI()
 
